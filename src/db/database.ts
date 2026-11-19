@@ -8,6 +8,7 @@ const FIELDS: (keyof PunchItem)[] = [
   'dataAprovacao', 'justificativa', 'dirty', 'updatedAt',
 ];
 
+export const FIELDS_LIST = FIELDS;
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 export const getDb = () => {
@@ -35,9 +36,30 @@ export async function upsertItem(it: PunchItem) {
   );
 }
 
-export async function listItems(where = '1=1', params: SQLite.SQLiteBindValue[] = []) {
+export interface ItemFilter {
+  area?: string | string[];
+  disciplina?: string;
+  situacao?: string;
+  statusAprovacao?: string;
+  dirty?: 0 | 1;
+  synced?: boolean; // tem spId
+}
+
+export async function listItems(f: ItemFilter = {}) {
+  const cond: string[] = [];
+  const p: SQLite.SQLiteBindValue[] = [];
+  if (Array.isArray(f.area)) { cond.push(`area IN (${f.area.map(() => '?').join(',') || "''"})`); p.push(...f.area); }
+  else if (f.area) { cond.push('area = ?'); p.push(f.area); }
+  for (const k of ['disciplina', 'situacao', 'statusAprovacao', 'dirty'] as const)
+    if (f[k] !== undefined) { cond.push(`${k} = ?`); p.push(f[k]!); }
+  if (f.synced !== undefined) cond.push(f.synced ? 'spId IS NOT NULL' : 'spId IS NULL');
   const db = await getDb();
-  return db.getAllAsync<PunchItem>(`SELECT * FROM items WHERE ${where} ORDER BY COALESCE(item, 999999999) DESC, dataInsercao DESC`, params);
+  return db.getAllAsync<PunchItem>(
+    `SELECT * FROM items WHERE ${cond.join(' AND ') || '1=1'} ORDER BY COALESCE(item, 999999999) DESC, dataInsercao DESC`, p);
+}
+
+export async function markAllClean() {
+  await (await getDb()).runAsync('UPDATE items SET dirty = 0 WHERE dirty = 1');
 }
 
 export const getItem = async (localId: string) =>

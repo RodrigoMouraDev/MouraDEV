@@ -1,5 +1,5 @@
 import * as AuthSession from 'expo-auth-session';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '../utils/kv';
 import * as WebBrowser from 'expo-web-browser';
 import { ENV, SCOPES } from '../config/env';
 import type { UserProfile } from '../types';

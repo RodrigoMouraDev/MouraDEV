@@ -1,4 +1,5 @@
-import { Alert, ScrollView, Text } from 'react-native';
+import { ScrollView, Text } from 'react-native';
+import { Alert } from '../utils/alert';
 import { PROFILES, type ProfileKey } from '../config/constants';
 import { Button, C, Header, s } from '../components/ui';
 import { approverAreas } from '../services/items';

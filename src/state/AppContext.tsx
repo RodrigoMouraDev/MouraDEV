@@ -1,6 +1,6 @@
 import NetInfo from '@react-native-community/netinfo';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Alert } from 'react-native';
+import { Alert } from '../utils/alert';
 import type { ProfileKey } from '../config/constants';
 import { CLOUD } from '../config/env';
 import { pendingCount } from '../db/database';

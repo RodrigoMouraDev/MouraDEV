@@ -1,21 +1,11 @@
 import { randomUUID } from 'expo-crypto';
-import * as FS from 'expo-file-system/legacy';
 import { CLOUD } from '../config/env';
 import { APPROVERS, PROFILES, type Area, type ProfileKey } from '../config/constants';
 import { areaEmissao, getItem, listItems, nextItem, upsertItem } from '../db/database';
 import type { PunchItem, UserProfile } from '../types';
 import { dupKey, norm, nowIso, today } from '../utils/format';
+import { persistPhoto } from '../utils/files';
 import { parseContractor } from './excel';
-
-const PHOTO_DIR = `${FS.documentDirectory}photos/`;
-
-/** Copia a foto para armazenamento persistente do app (o cache do picker pode ser limpo). */
-async function persistPhoto(uri: string, id: string) {
-  await FS.makeDirectoryAsync(PHOTO_DIR, { intermediates: true }).catch(() => {});
-  const dest = `${PHOTO_DIR}${id}.jpg`;
-  await FS.copyAsync({ from: uri, to: dest });
-  return dest;
-}
 
 export interface FieldInput { area: string; tag: string; descricao: string; disciplina: string; photoUri: string | null }
 

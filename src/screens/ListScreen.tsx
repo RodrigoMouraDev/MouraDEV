@@ -1,12 +1,13 @@
 import * as DocumentPicker from 'expo-document-picker';
-import * as FS from 'expo-file-system/legacy';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, Text, View } from 'react-native';
+import { Alert } from '../utils/alert';
+import { FlatList, Modal, Pressable, Text, View } from 'react-native';
 import { AREAS, DISCIPLINAS, SITUACOES, STATUS_APROVACAO } from '../config/constants';
 import { Button, C, Header, Input, Select, s } from '../components/ui';
 import { listItems } from '../db/database';
 import { approverAreas, importContractor } from '../services/items';
 import { exportAndShare } from '../services/sync';
+import { readBase64 } from '../utils/files';
 import { useApp } from '../state/AppContext';
 import type { PunchItem } from '../types';
 import { fmtDate, norm } from '../utils/format';
@@ -23,13 +24,10 @@ export default function ListScreen({ mode }: { mode: 'office' | 'approvals' }) {
   const [askArea, setAskArea] = useState(false);
 
   const load = useCallback(async () => {
-    const cond: string[] = [`area IN (${myAreas.map(() => '?').join(',') || "''"})`];
-    const p: string[] = [...myAreas];
-    if (f.area) { cond.push('area = ?'); p.push(f.area); }
-    if (f.disciplina) { cond.push('disciplina = ?'); p.push(f.disciplina); }
-    if (f.situacao) { cond.push('situacao = ?'); p.push(f.situacao); }
-    if (f.status) { cond.push('statusAprovacao = ?'); p.push(f.status); }
-    const rows = await listItems(cond.join(' AND '), p);
+    const rows = await listItems({
+      area: f.area ? (myAreas.includes(f.area) ? f.area : []) : myAreas,
+      disciplina: f.disciplina ?? undefined, situacao: f.situacao ?? undefined, statusAprovacao: f.status ?? undefined,
+    });
     setItems(f.tag ? rows.filter((r) => norm(r.tag).includes(norm(f.tag))) : rows);
   }, [f, myAreas]);
   useEffect(() => { load(); }, [load, version]);
@@ -43,7 +41,7 @@ export default function ListScreen({ mode }: { mode: 'office' | 'approvals' }) {
     if (r.canceled) return;
     setBusy('upload');
     try {
-      const b64 = await FS.readAsStringAsync(r.assets[0].uri, { encoding: FS.EncodingType.Base64 });
+      const b64 = await readBase64(r.assets[0].uri);
       const res = await importContractor(b64, uploadArea, user!);
       await refreshPending(); await load();
       Alert.alert('Arquivo da Contratada', `Área ${uploadArea}\n${res.added} item(ns) incluído(s)\n${res.dup} duplicado(s) ignorado(s)` +

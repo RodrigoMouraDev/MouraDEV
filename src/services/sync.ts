@@ -9,7 +9,9 @@ import type { PunchItem } from '../types';
 import { nowIso, today } from '../utils/format';
 import { getCachedUser } from './auth';
 import { buildMaster } from './excel';
-import { exportLocal, markExported } from './local';
+import { markAllClean } from '../db/database';
+import { shareFile } from '../utils/files';
+import { exportLocal } from './local';
 import { createListItem, downloadFile, getAllListItems, updateListItem, uploadFile } from './graph';
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -65,10 +67,10 @@ async function doSync(): Promise<SyncResult> {
     if (local?.dirty) { if (!local.spId) await upsertItem({ ...local, spId: r.id }); continue; }
     await upsertItem(fromSp(r.id, r.fields, local));
   }
-  for (const it of await listItems('spId IS NOT NULL AND dirty = 0')) if (!remoteIds.has(it.spId!)) await deleteItem(it.localId);
+  for (const it of await listItems({ synced: true, dirty: 0 })) if (!remoteIds.has(it.spId!)) await deleteItem(it.localId);
 
   // 2) Push: fotos + criação/atualização na Lista.
-  const dirty = await listItems('dirty = 1');
+  const dirty = await listItems({ dirty: 1 });
   for (const it of dirty) {
     if (it.fotoLocalUri && !it.fotoUrl) {
       const safeArea = it.area.replace(/[^\w-]+/g, '_');
@@ -84,7 +86,7 @@ async function doSync(): Promise<SyncResult> {
   // 2b) "Item" sequencial por Área (1, 2, 3…), na ordem de criação no SharePoint (ID da Lista).
   //     Determinístico: aparelhos sincronizando ao mesmo tempo chegam à mesma numeração, sem conflito.
   for (const area of AREAS) {
-    const list = (await listItems('area = ? AND spId IS NOT NULL', [area])).sort((a, b) => Number(a.spId) - Number(b.spId));
+    const list = (await listItems({ area, synced: true })).sort((a, b) => Number(a.spId) - Number(b.spId));
     for (const [i, it] of list.entries()) {
       if (it.item === i + 1) continue;
       await updateListItem(it.spId!, { Item: i + 1 });
@@ -108,7 +110,7 @@ const header = async (rev: string) => ({ emitidoPor: (await getCachedUser())?.di
 async function publishMaster(rev: string) {
   const tpl = await downloadFile(ENV.spMasterPath, MASTER_TEMPLATE);
   const template = tpl ? await FS.readAsStringAsync(tpl, { encoding: FS.EncodingType.Base64 }) : null;
-  const items = await listItems('spId IS NOT NULL');
+  const items = await listItems({ synced: true });
   await FS.writeAsStringAsync(MASTER_CACHE, buildMaster(items, template, await header(rev)), { encoding: FS.EncodingType.Base64 });
   await uploadFile(MASTER_CACHE, ENV.spMasterPath, XLSX_MIME);
 }
@@ -118,7 +120,6 @@ async function publishMaster(rev: string) {
  * offline -> gera a partir da base local (última cópia do modelo).
  */
 export async function exportMaster(): Promise<string> {
-  if (!CLOUD) return exportLocal();
   const out = `${FS.cacheDirectory}${ENV.spMasterPath.split('/').pop()}`;
   if (await isOnline()) {
     await syncNow();
@@ -133,12 +134,11 @@ export async function exportMaster(): Promise<string> {
 
 /** Exporta e abre o compartilhar do aparelho (OneDrive, SharePoint, Teams, e-mail…). */
 export async function exportAndShare() {
+  if (!CLOUD) {
+    const f = await exportLocal();
+    if (await shareFile(f.name, f.base64, f.mime)) await markAllClean();
+    return;
+  }
   const file = await exportMaster();
-  const zip = file.endsWith('.zip');
-  await Sharing.shareAsync(file, {
-    mimeType: zip ? 'application/zip' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    UTI: zip ? 'public.zip-archive' : 'org.openxmlformats.spreadsheetml.sheet',
-    dialogTitle: 'Enviar Punch List',
-  });
-  if (!CLOUD) await markExported();
+  await Sharing.shareAsync(file, { mimeType: XLSX_MIME, UTI: 'org.openxmlformats.spreadsheetml.sheet', dialogTitle: 'Enviar Punch List' });
 }

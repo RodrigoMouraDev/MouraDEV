@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { Alert } from '../utils/alert';
 import { Button, C, Input } from '../components/ui';
 import { CLOUD } from '../config/env';
 import { useApp } from '../state/AppContext';

@@ -1,6 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { Alert } from '../utils/alert';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { AREAS, DISCIPLINAS } from '../config/constants';
 import { CLOUD } from '../config/env';
 import { Button, C, Header, Input, Label, Select, s } from '../components/ui';

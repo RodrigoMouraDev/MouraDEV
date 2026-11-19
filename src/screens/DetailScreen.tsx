@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert, Image, Linking, Modal, ScrollView, Text, View } from 'react-native';
+import { Alert } from '../utils/alert';
+import { Image, Linking, Modal, ScrollView, Text, View } from 'react-native';
 import { CATEGORIAS, IMPACTOS, PROFILES, SITUACOES, TIPOS } from '../config/constants';
 import { Button, C, Header, Input, Label, Select, s } from '../components/ui';
 import { CLOUD } from '../config/env';

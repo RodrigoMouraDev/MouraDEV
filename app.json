@@ -23,7 +23,11 @@
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#00594C"
+      }
     },
     "plugins": [
       "expo-sqlite",
@@ -49,6 +53,17 @@
         "projectId": "8749ae33-f665-492c-acfd-4fda6c55fba5"
       }
     },
-    "owner": "mouradevultra"
+    "owner": "mouradevultra",
+    "icon": "./assets/icon.png",
+    "web": {
+      "name": "Punch List Sucuriú",
+      "shortName": "Punch List",
+      "themeColor": "#00594C",
+      "backgroundColor": "#F4F6F5",
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/icon.png",
+      "lang": "pt-BR"
+    }
   }
 }
