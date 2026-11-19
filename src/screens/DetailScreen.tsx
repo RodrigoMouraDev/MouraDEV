@@ -87,7 +87,7 @@ export default function DetailScreen({ localId }: { localId: string }) {
         {editable ? (
           <>
             <Label>Categoria</Label><Select value={v('categoria')} options={CATEGORIAS} allowClear onChange={(x) => set({ categoria: x })} />
-            <Label>Impactos</Label><Select multi value={v('impactos')} options={IMPACTOS} onChange={(x) => set({ impactos: x })} />
+            <Label>Impactos</Label><Select value={v('impactos')} options={IMPACTOS} allowClear onChange={(x) => set({ impactos: x })} />
             <Label>Tipo</Label><Select value={v('tipo')} options={TIPOS} allowClear onChange={(x) => set({ tipo: x })} />
             <Label>Responsável solução</Label><Input value={v('responsavel') ?? ''} onChangeText={(x) => set({ responsavel: x || null })} />
             <Label>Data prevista</Label><Input value={prev} onChangeText={setPrev} placeholder="DD/MM/AAAA" />

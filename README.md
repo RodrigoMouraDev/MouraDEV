@@ -27,11 +27,30 @@ online ou em **“Sincronizar Agora”**, o app:
 
 1. **Pull** — lê a Lista do SharePoint e atualiza a base local (itens sem alteração local).
 2. **Push** — envia fotos para a Biblioteca (`Fotos/<Área>/…jpg`, URL gravada em `FotoUrl`) e cria/atualiza os itens.
-   O **`Item` sequencial é o ID da Lista do SharePoint**: gerado pelo servidor, nunca conflita entre aparelhos.
    A coluna `LocalId` evita duplicar um item cujo envio foi interrompido.
-3. **Planilha mestre** — baixa `Modelo - Punch list.xlsx`, localiza a linha de cabeçalho (com `TAG` e `Descrição`),
-   reescreve as linhas de dados a partir da Lista (fonte única da verdade), acrescenta colunas ausentes à direita,
-   preenche os rótulos `Emissão inicial` / `Data da revisão` do bloco superior e devolve o arquivo ao SharePoint.
+3. **Item** — numerado **por Área a partir de 1** (como pede a aba *Instruções* do modelo), na ordem de criação na
+   Lista (ID do SharePoint). A regra é determinística: aparelhos sincronizando juntos chegam à mesma numeração.
+   Para retirar uma pendência use `Situação = Cancelado` (excluir da Lista renumera a área).
+4. **Planilha mestre** — ver abaixo.
+
+### Planilha mestre (`Modelo - Punch list.xlsx`)
+
+O app edita o XML do próprio arquivo do SharePoint, então **formatação, logo, abas `Instruções`, `Dados`,
+`Controle` e a aba-modelo `Lista` ficam intactas**. Como o modelo tem uma lista por Ilha de Processo/Área
+(a área fica no cabeçalho, não em coluna), cada Área ganha sua **própria aba** (`WHL`, `FBL`, …, `WLP - GAS`),
+clonada da `Lista`:
+
+| Cabeçalho | Preenchimento |
+|---|---|
+| Ilha de Processo / Área (F4) | `WHL — Celulose` etc. (na criação da aba) |
+| Emissão inicial (J4) | data da 1ª emissão da área — **preservada** depois |
+| Data da revisão (L4) | última inclusão/edição/aprovação sincronizada da área |
+| Emitido por (N4) | usuário que gerou a aba (pode ser editado no Excel e é preservado) |
+| Fornecedor / Doc. nº (H4, P4) | em branco na criação; preservados depois |
+
+Linhas a partir da 8 com as colunas do modelo (`Item` … `Foto`, foto como hiperlink) e, à direita, as colunas de
+aprovação: `Status de Aprovação`, `Aprovador`, `Frente Aprovação`, `Data/Hora Aprovação`, `Justificativa Devolução`.
+Sem acesso ao modelo (primeiro uso offline) o app exporta uma planilha simples com todas as colunas.
 
 **Datas** (calendário do aparelho, gravadas como data Excel nativa formato `dd/mmm/yy`):
 `Data inserção` = dia do registro; `Emissão inicial` = mais antiga da área, preservada; `Data da revisão` =
@@ -71,7 +90,7 @@ Datas como *Data e Hora*; demais como *Uma linha de texto* (ou *Várias linhas* 
 | `LocalId` | Texto (indexado) | | | |
 
 Na Biblioteca **Documentos** coloque `PunchList/Modelo - Punch list.xlsx` (as fotos vão para `PunchList/Fotos`).
-Se os cabeçalhos do modelo forem diferentes, ajuste `header` em `src/config/columns.ts`.
+Os cabeçalhos são localizados pelo texto (ver `header` em `src/config/columns.ts`), não pela posição.
 
 ## 3. Ambiente local
 
@@ -104,13 +123,14 @@ iOS exige conta Apple Developer (o EAS gera certificados/perfis). Os bundle IDs 
 ## Upload de arquivo da contratada (perfil Timenow)
 
 Sala/Engenharia → **Upload Arquivo da Contratada** → escolhe a Área → seleciona `.xlsx`. O app localiza o cabeçalho,
-exige `TAG` e `Descrição` (demais colunas do modelo são aproveitadas se existirem), ignora duplicados pela chave
+exige `TAG` e `Descrição` (demais colunas do modelo — inclusive Categoria/Impactos/Tipo do sub-cabeçalho
+*Classificação* — são aproveitadas); lê a primeira aba no padrão do modelo que tenha linhas preenchidas, ignora duplicados pela chave
 **Área + TAG + Descrição** (normalizada) e inclui os válidos com `Origem = Projeto`; eles sobem na próxima sincronização.
 
 ## Limitações conhecidas
 
-- O SheetJS Community não preserva toda a formatação visual (cores/bordas) ao regravar o modelo; valores, abas,
-  cabeçalho e bloco superior são mantidos.
+- A tabela dinâmica da aba `Controle` continua apontando para a aba `Lista` do modelo (não é recalculada por área).
+- A lista `Origem` da aba `Dados` não contém `Implantação`; o app grava o valor conforme o perfil mesmo assim.
 - Edições simultâneas do mesmo item em aparelhos diferentes: vale a última sincronização (last-write-wins).
 - A habilitação do aprovador compara o `displayName` do Entra ID com a matriz — os nomes no diretório devem
   coincidir (acentos e maiúsculas são ignorados).

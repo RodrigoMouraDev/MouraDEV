@@ -12,6 +12,14 @@ export interface ColumnDef {
  * Mapeamento único: planilha mestre <-> Lista SharePoint <-> SQLite.
  * Ajuste `header` se o cabeçalho do modelo diferir; `sp` deve casar com o nome interno da coluna.
  */
+/** Colunas do app acrescentadas à direita do modelo (aprovação). */
+export const APPROVAL_KEYS: (keyof PunchItem)[] = ['statusAprovacao', 'aprovador', 'frenteAprovacao', 'dataAprovacao', 'justificativa'];
+
+/** Aliases aceitos na leitura de planilhas (cabeçalho normalizado -> campo). */
+export const HEADER_ALIASES: Record<string, keyof PunchItem> = {
+  descricao: 'descricao', area: 'area', comentarios: 'comentarios', impacto: 'impactos',
+};
+
 export const COLUMNS: ColumnDef[] = [
   { key: 'item', header: 'Item', sp: 'Item', type: 'number' },
   { key: 'area', header: 'Área', sp: 'Area', type: 'text' },
@@ -28,7 +36,7 @@ export const COLUMNS: ColumnDef[] = [
   { key: 'dataPrevista', header: 'Data prevista', sp: 'DataPrevista', type: 'date' },
   { key: 'situacao', header: 'Situação', sp: 'Situacao', type: 'text' },
   { key: 'dataConclusao', header: 'Data conclusão', sp: 'DataConclusao', type: 'date' },
-  { key: 'comentarios', header: 'Comentários', sp: 'Comentarios', type: 'text' },
+  { key: 'comentarios', header: 'Comentário', sp: 'Comentarios', type: 'text' },
   { key: 'fotoUrl', header: 'Foto', sp: 'FotoUrl', type: 'text' },
   { key: 'statusAprovacao', header: 'Status de Aprovação', sp: 'StatusAprovacao', type: 'text' },
   { key: 'aprovador', header: 'Aprovador', sp: 'Aprovador', type: 'text' },

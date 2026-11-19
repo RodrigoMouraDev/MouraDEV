@@ -11,7 +11,7 @@ export interface PunchItem {
   fotoLocalUri: string | null;
   fotoUrl: string | null;
   categoria: string | null;
-  impactos: string | null; // múltiplos, separados por "; "
+  impactos: string | null;
   tipo: string | null;
   solicitadoPor: string;
   origem: string;

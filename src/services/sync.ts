@@ -1,10 +1,12 @@
 import NetInfo from '@react-native-community/netinfo';
 import * as FS from 'expo-file-system/legacy';
 import { COLUMNS } from '../config/columns';
+import { AREAS } from '../config/constants';
 import { ENV } from '../config/env';
 import { areaEmissao, deleteItem, findBySpId, getItem, listItems, setMeta, upsertItem } from '../db/database';
 import type { PunchItem } from '../types';
 import { nowIso, today } from '../utils/format';
+import { getCachedUser } from './auth';
 import { buildMaster } from './excel';
 import { createListItem, downloadFile, getAllListItems, updateListItem, uploadFile } from './graph';
 
@@ -30,7 +32,6 @@ const fromSp = (id: string, f: Record<string, any>, local?: PunchItem | null): P
     it[c.key] = v === undefined || v === null || v === '' ? null : c.type === 'date' ? String(v).slice(0, 10) : c.type === 'number' ? Number(v) : v;
   }
   it.localId = local?.localId ?? f.LocalId ?? `sp-${id}`;
-  it.item ??= Number(id);
   it.situacao ??= 'Pendente';
   it.statusAprovacao ??= 'Aguardando Aprovação';
   return it as PunchItem;
@@ -59,12 +60,12 @@ async function doSync(): Promise<SyncResult> {
   const remoteIds = new Set(remote.map((r) => r.id));
   for (const r of remote) {
     const local = (await findBySpId(r.id)) ?? (r.fields.LocalId ? await getItem(r.fields.LocalId) : null);
-    if (local?.dirty) { if (!local.spId) await upsertItem({ ...local, spId: r.id, item: Number(r.id) }); continue; }
+    if (local?.dirty) { if (!local.spId) await upsertItem({ ...local, spId: r.id }); continue; }
     await upsertItem(fromSp(r.id, r.fields, local));
   }
   for (const it of await listItems('spId IS NOT NULL AND dirty = 0')) if (!remoteIds.has(it.spId!)) await deleteItem(it.localId);
 
-  // 2) Push: fotos + criação/atualização na Lista. "Item" = ID sequencial da Lista (sem conflito entre aparelhos).
+  // 2) Push: fotos + criação/atualização na Lista.
   const dirty = await listItems('dirty = 1');
   for (const it of dirty) {
     if (it.fotoLocalUri && !it.fotoUrl) {
@@ -73,12 +74,20 @@ async function doSync(): Promise<SyncResult> {
     }
     it.emissaoInicial = await areaEmissao(it.area, it.emissaoInicial ?? rev);
     it.dataRevisao = rev;
-    if (!it.spId) {
-      it.spId = await createListItem(toSp(it));
-      it.item = Number(it.spId);
-      await updateListItem(it.spId, { Item: it.item });
-    } else await updateListItem(it.spId, toSp(it));
+    if (!it.spId) it.spId = await createListItem(toSp(it));
+    else await updateListItem(it.spId, toSp(it));
     await upsertItem({ ...it, dirty: 0, updatedAt: nowIso() });
+  }
+
+  // 2b) "Item" sequencial por Área (1, 2, 3…), na ordem de criação no SharePoint (ID da Lista).
+  //     Determinístico: aparelhos sincronizando ao mesmo tempo chegam à mesma numeração, sem conflito.
+  for (const area of AREAS) {
+    const list = (await listItems('area = ? AND spId IS NOT NULL', [area])).sort((a, b) => Number(a.spId) - Number(b.spId));
+    for (const [i, it] of list.entries()) {
+      if (it.item === i + 1) continue;
+      await updateListItem(it.spId!, { Item: i + 1 });
+      await upsertItem({ ...it, item: i + 1 });
+    }
   }
 
   // 3) Planilha mestre no SharePoint, regenerada a partir da Lista (fonte única da verdade).
@@ -91,12 +100,14 @@ async function doSync(): Promise<SyncResult> {
   return { pushed: dirty.length, pulled: remote.length, master };
 }
 
+const header = async (rev: string) => ({ emitidoPor: (await getCachedUser())?.displayName ?? '', today: rev });
+
 /** Baixa o modelo atual, aplica a base consolidada e devolve ao SharePoint. */
 async function publishMaster(rev: string) {
   const tpl = await downloadFile(ENV.spMasterPath, MASTER_TEMPLATE);
   const template = tpl ? await FS.readAsStringAsync(tpl, { encoding: FS.EncodingType.Base64 }) : null;
   const items = await listItems('spId IS NOT NULL');
-  await FS.writeAsStringAsync(MASTER_CACHE, buildMaster(items, template, rev), { encoding: FS.EncodingType.Base64 });
+  await FS.writeAsStringAsync(MASTER_CACHE, buildMaster(items, template, await header(rev)), { encoding: FS.EncodingType.Base64 });
   await uploadFile(MASTER_CACHE, ENV.spMasterPath, XLSX_MIME);
 }
 
@@ -113,6 +124,6 @@ export async function exportMaster(): Promise<string> {
   }
   const has = (await FS.getInfoAsync(MASTER_CACHE)).exists;
   const template = has ? await FS.readAsStringAsync(MASTER_CACHE, { encoding: FS.EncodingType.Base64 }) : null;
-  await FS.writeAsStringAsync(out, buildMaster(await listItems(), template, today()), { encoding: FS.EncodingType.Base64 });
+  await FS.writeAsStringAsync(out, buildMaster(await listItems(), template, await header(today())), { encoding: FS.EncodingType.Base64 });
   return out;
 }
