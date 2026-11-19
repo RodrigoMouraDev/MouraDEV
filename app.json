@@ -8,7 +8,6 @@
     "userInterfaceStyle": "light",
     "ios": {
       "bundleIdentifier": "com.arauco.sucuriu.punchlist",
-      "buildNumber": "1",
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "A câmera é usada para fotografar as pendências da Punch List em campo.",
@@ -18,9 +17,13 @@
     },
     "android": {
       "package": "com.arauco.sucuriu.punchlist",
-      "versionCode": 1,
-      "permissions": ["android.permission.CAMERA", "android.permission.ACCESS_NETWORK_STATE"],
-      "blockedPermissions": ["android.permission.RECORD_AUDIO"]
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-sqlite",
@@ -34,7 +37,18 @@
           "microphonePermission": false
         }
       ],
-      ["expo-document-picker", { "iCloudContainerEnvironment": "Production" }]
-    ]
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "8749ae33-f665-492c-acfd-4fda6c55fba5"
+      }
+    },
+    "owner": "mouradevultra"
   }
 }
