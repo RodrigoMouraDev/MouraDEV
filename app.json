@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Punch List Sucuriú",
+    "slug": "punchlist-sucuriu",
+    "scheme": "punchlist",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "com.arauco.sucuriu.punchlist",
+      "buildNumber": "1",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "A câmera é usada para fotografar as pendências da Punch List em campo.",
+        "NSPhotoLibraryUsageDescription": "A galeria é usada para anexar fotos às pendências da Punch List.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.arauco.sucuriu.punchlist",
+      "versionCode": 1,
+      "permissions": ["android.permission.CAMERA", "android.permission.ACCESS_NETWORK_STATE"],
+      "blockedPermissions": ["android.permission.RECORD_AUDIO"]
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "A câmera é usada para fotografar as pendências da Punch List em campo.",
+          "photosPermission": "A galeria é usada para anexar fotos às pendências da Punch List.",
+          "microphonePermission": false
+        }
+      ],
+      ["expo-document-picker", { "iCloudContainerEnvironment": "Production" }]
+    ]
+  }
+}
