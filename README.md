@@ -60,18 +60,31 @@ atualizada em cada inclusão, edição, aprovação e sincronização.
 logado (Entra ID `displayName`, comparado sem acento/maiúsculas) é o aprovador oficial da área **para o perfil
 selecionado** (`APPROVERS` em `constants.ts`). Grava `Aprovador`, `Frente Aprovação`, `Data/Hora Aprovação`.
 
-## 1. Microsoft Entra ID (App registration)
+## 1. Microsoft Entra ID (tenant **Timenow**, dono do SharePoint)
 
-1. *App registrations → New registration* — “Punch List Sucuriú”, contas somente deste diretório.
+1. *Entra ID → App registrations → New registration* — “Punch List Sucuriú”, **contas somente deste diretório**.
 2. *Authentication → Add a platform → Mobile and desktop applications* → Redirect URI: `punchlist://auth`.
    Em *Advanced settings* deixe **Allow public client flows = Yes**. Não há client secret (PKCE).
-3. *API permissions* (Delegated, Microsoft Graph): `User.Read`, `Sites.ReadWrite.All`, `offline_access` → **Grant admin consent**.
-   (Alternativa mais restrita: `Sites.Selected` concedido apenas ao site do projeto.)
+3. *API permissions* (Delegated, Microsoft Graph): `User.Read`, `Sites.ReadWrite.All`, `Sites.Manage.All`,
+   `offline_access` → **Grant admin consent for Timenow**. (`Sites.Manage.All` só serve para o app criar a Lista
+   na primeira sincronização; cada usuário continua limitado às permissões que já tem no site.)
+4. Copie *Directory (tenant) ID* e *Application (client) ID* para o `.env`.
+5. Usuários **Arauco** (Implantação/Manutenção) precisam estar como **convidados (B2B)** no tenant Timenow e ter
+   permissão de edição no site `AraucoProjetoSucuriu` — o login usa a conta corporativa Arauco normalmente.
 
-## 2. SharePoint
+## 2. SharePoint (já configurado no app)
 
-No site do projeto crie a Lista **`PunchList`** com as colunas abaixo (nome interno exato; tipo sugerido).
-Datas como *Data e Hora*; demais como *Uma linha de texto* (ou *Várias linhas* para Descrição/Comentários/Justificativa/FotoUrl).
+| Item | Local |
+|---|---|
+| Site | `https://timenow.sharepoint.com/sites/AraucoProjetoSucuriu` |
+| Biblioteca | `01 Documentação` (URL `01 Documentao`) |
+| Planilha mestre | `GERENCIAMENTO DE EPC/05- Qualidade/QUALIDADE - SUCURIU/07 - GESTÃO E CONTROLE/10-PUNCH LIST/BASE DE DADOS/Modelo - Punch list.xlsx` |
+| Fotos | `…/10-PUNCH LIST/FOTOS/<Área>/` (criada automaticamente) |
+| Lista central | `PunchList` no mesmo site — **criada automaticamente** na 1ª sincronização |
+
+Para mudar algum local, defina a variável correspondente no `.env` (ver `.env.example`).
+
+Colunas da Lista `PunchList` (criadas pelo app; para criar manualmente use estes nomes internos):
 
 | Coluna (interno) | Tipo | | Coluna (interno) | Tipo |
 |---|---|---|---|---|
@@ -89,13 +102,12 @@ Datas como *Data e Hora*; demais como *Uma linha de texto* (ou *Várias linhas* 
 | `EmissaoInicial` | Data | | `DataRevisao` | Data |
 | `LocalId` | Texto (indexado) | | | |
 
-Na Biblioteca **Documentos** coloque `PunchList/Modelo - Punch list.xlsx` (as fotos vão para `PunchList/Fotos`).
-Os cabeçalhos são localizados pelo texto (ver `header` em `src/config/columns.ts`), não pela posição.
+Os cabeçalhos da planilha são localizados pelo texto (ver `header` em `src/config/columns.ts`), não pela posição.
 
 ## 3. Ambiente local
 
 ```bash
-cp .env.example .env      # preencha Tenant, Client ID e SharePoint
+cp .env.example .env      # preencha Tenant ID e Client ID (SharePoint já vem configurado)
 npm install               # SheetJS vem do CDN oficial (cdn.sheetjs.com) — commite o package-lock.json gerado
 npm run typecheck
 npx expo run:android      # ou: npx expo run:ios  (expo-auth-session/SecureStore exigem build nativo, não Expo Go)

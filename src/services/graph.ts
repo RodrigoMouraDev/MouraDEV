@@ -1,4 +1,5 @@
 import * as FS from 'expo-file-system/legacy';
+import { COLUMNS } from '../config/columns';
 import { ENV } from '../config/env';
 import { getMeta, setMeta } from '../db/database';
 import { getAccessToken } from './auth';
@@ -29,13 +30,35 @@ async function cached(key: string, load: () => Promise<string>) {
 }
 
 export const siteId = () => cached('sp:site', async () => (await gfetch(`/sites/${ENV.spHost}:${ENV.spSitePath}`)).id);
+/** Lista central; criada automaticamente (com todas as colunas) se ainda não existir no site. */
 export const listId = () =>
-  cached('sp:list', async () => (await gfetch(`/sites/${await siteId()}/lists/${encodeURIComponent(ENV.spListName)}`)).id);
+  cached('sp:list', async () => {
+    const site = await siteId();
+    try {
+      return (await gfetch(`/sites/${site}/lists/${encodeURIComponent(ENV.spListName)}`)).id;
+    } catch (e) {
+      if (!String(e).includes('Graph 404')) throw e;
+      const columns = COLUMNS.map((c) => ({
+        name: c.sp,
+        ...(c.type === 'number' ? { number: {} }
+          : c.type === 'date' ? { dateTime: { format: 'dateOnly' } }
+          : c.type === 'datetime' ? { dateTime: { format: 'dateTime' } }
+          : { text: { allowMultipleLines: ['Descricao', 'Comentarios', 'JustificativaDevolucao', 'FotoUrl'].includes(c.sp) } }),
+        ...(['LocalId', 'Area', 'Item'].includes(c.sp) ? { indexed: true } : {}),
+      }));
+      return (await gfetch(`/sites/${site}/lists`, {
+        method: 'POST', body: JSON.stringify({ displayName: ENV.spListName, columns, list: { template: 'genericList' } }),
+      })).id;
+    }
+  });
+
+/** Biblioteca pelo nome exibido ou pelo trecho da URL (ex.: "01 Documentao" para "01 Documentação"). */
 export const driveId = () =>
   cached('sp:drive', async () => {
-    const { value } = await gfetch<{ value: { id: string; name: string }[] }>(`/sites/${await siteId()}/drives`);
-    const d = value.find((x) => x.name === ENV.spLibraryName) ?? value[0];
-    if (!d) throw new Error(`Biblioteca "${ENV.spLibraryName}" não encontrada`);
+    const { value } = await gfetch<{ value: { id: string; name: string; webUrl: string }[] }>(`/sites/${await siteId()}/drives?$select=id,name,webUrl`);
+    const want = ENV.spLibraryName.toLowerCase();
+    const d = value.find((x) => x.name.toLowerCase() === want || decodeURIComponent(x.webUrl).toLowerCase().endsWith(`/${want}`));
+    if (!d) throw new Error(`Biblioteca "${ENV.spLibraryName}" não encontrada no site`);
     return d.id;
   });
 
