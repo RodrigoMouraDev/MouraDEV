@@ -2,9 +2,10 @@ import NetInfo from '@react-native-community/netinfo';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Alert } from 'react-native';
 import type { ProfileKey } from '../config/constants';
+import { CLOUD } from '../config/env';
 import { pendingCount } from '../db/database';
-import { getCachedUser, login as msLogin, logout as msLogout } from '../services/auth';
-import { syncNow } from '../services/sync';
+import { getCachedUser, localLogin, login as msLogin, logout as msLogout } from '../services/auth';
+import { exportAndShare, syncNow } from '../services/sync';
 import type { UserProfile } from '../types';
 
 export type Route =
@@ -23,7 +24,7 @@ interface Ctx {
   navigate: (r: Route) => void;
   back: () => void;
   setProfile: (p: ProfileKey | null) => void;
-  login: () => Promise<void>;
+  login: (name?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshPending: () => Promise<void>;
   sync: (silent?: boolean) => Promise<void>;
@@ -51,6 +52,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!userRef.current) return;
     setSyncing(true);
     try {
+      if (!CLOUD) { await exportAndShare(); return; }
       const r = await syncNow();
       if (!silent) Alert.alert('Sincronizado', `${r.pushed} enviado(s), ${r.pulled} item(ns) na base.${r.master ? '\nPlanilha mestre atualizada.' : ''}`);
       setVersion((v) => v + 1);
@@ -59,6 +61,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       setSyncing(false);
       refreshPending();
+      setVersion((v) => v + 1);
     }
   }, [refreshPending]);
 
@@ -75,11 +78,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const unsub = NetInfo.addEventListener((s) => {
       const on = !!s.isConnected && s.isInternetReachable !== false;
       setOnline((prev) => {
-        if (on && !prev) sync(true);
+        if (CLOUD && on && !prev) sync(true);
         return on;
       });
     });
-    const t = setInterval(async () => { if ((await pendingCount()) > 0) sync(true); }, 5 * 60 * 1000);
+    const t = setInterval(async () => { if (CLOUD && (await pendingCount()) > 0) sync(true); }, 5 * 60 * 1000);
     return () => { unsub(); clearInterval(t); };
   }, [sync]);
 
@@ -89,7 +92,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     navigate: (r) => setStack((s) => [...s, r]),
     back: () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)),
     setProfile,
-    login: async () => { setUser(await msLogin()); sync(true); },
+    login: async (name) => { if (CLOUD) { setUser(await msLogin()); sync(true); } else setUser(await localLogin(name ?? '')); },
     logout: async () => { await msLogout(); setUser(null); setProfile(null); setStack([{ name: 'home' }]); },
     refreshPending, sync,
   };

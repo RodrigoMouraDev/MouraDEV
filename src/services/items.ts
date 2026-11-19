@@ -1,7 +1,8 @@
 import { randomUUID } from 'expo-crypto';
 import * as FS from 'expo-file-system/legacy';
+import { CLOUD } from '../config/env';
 import { APPROVERS, PROFILES, type Area, type ProfileKey } from '../config/constants';
-import { areaEmissao, getItem, listItems, upsertItem } from '../db/database';
+import { areaEmissao, getItem, listItems, nextItem, upsertItem } from '../db/database';
 import type { PunchItem, UserProfile } from '../types';
 import { dupKey, norm, nowIso, today } from '../utils/format';
 import { parseContractor } from './excel';
@@ -38,6 +39,7 @@ export async function createFieldItem(input: FieldInput, user: UserProfile, prof
     fotoLocalUri: input.photoUri ? await persistPhoto(input.photoUri, localId) : null,
   };
   it.emissaoInicial = await areaEmissao(it.area, it.dataInsercao);
+  if (!CLOUD) it.item = await nextItem(it.area); // modo local: numeração por área no aparelho
   await upsertItem(it);
   return it;
 }
@@ -73,25 +75,27 @@ export async function decide(localId: string, user: UserProfile, profile: Profil
   });
 }
 
-/** Compila planilha da contratada na base (sem duplicar Área + TAG + Descrição). */
+/**
+ * Compila planilha na base: arquivo de contratada (usa a Área escolhida) ou planilha exportada pelo app
+ * (uma aba por Área). Ignora duplicados pela chave Área + TAG + Descrição.
+ */
 export async function importContractor(base64: string, area: string, user: UserProfile) {
   const { rows, errors } = parseContractor(base64);
-  const existing = new Set((await listItems('area = ?', [area])).map((i) => dupKey(i.area, i.tag, i.descricao)));
+  const existing = new Set((await listItems()).map((i) => dupKey(i.area, i.tag, i.descricao)));
   let added = 0, dup = 0;
-  const emissao = await areaEmissao(area, today());
   for (const r of rows) {
-    const key = dupKey(area, r.tag!, r.descricao!);
+    const a = r.area ?? area;
+    const key = dupKey(a, r.tag!, r.descricao!);
     if (existing.has(key)) { dup++; continue; }
     existing.add(key);
     const base = blank(user, 'Projeto');
+    const fromFile = Object.fromEntries(Object.entries(r).filter(([, v]) => v !== null && v !== undefined && v !== ''));
     const it: PunchItem = {
-      ...base,
-      ...Object.fromEntries(Object.entries(r).filter(([, v]) => v !== null && v !== undefined)),
-      localId: randomUUID(), spId: null, item: null, area, tag: r.tag!, descricao: r.descricao!,
-      disciplina: r.disciplina ?? 'Outras', solicitadoPor: r.solicitadoPor ?? user.displayName,
-      origem: 'Projeto', emissaoInicial: emissao, dataInsercao: r.dataInsercao ?? base.dataInsercao,
-      statusAprovacao: 'Aguardando Aprovação', aprovador: null, frenteAprovacao: null, dataAprovacao: null,
-      fotoLocalUri: null, dirty: 1, updatedAt: nowIso(),
+      ...base, ...fromFile,
+      localId: randomUUID(), spId: null, area: a, tag: r.tag!, descricao: r.descricao!,
+      disciplina: r.disciplina ?? 'Outras', fotoLocalUri: null, dirty: 1, updatedAt: nowIso(),
+      item: CLOUD ? null : await nextItem(a),
+      emissaoInicial: await areaEmissao(a, r.dataInsercao ?? today()),
     };
     await upsertItem(it);
     added++;

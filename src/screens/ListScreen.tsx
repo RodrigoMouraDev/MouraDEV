@@ -1,13 +1,12 @@
 import * as DocumentPicker from 'expo-document-picker';
 import * as FS from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, Text, View } from 'react-native';
 import { AREAS, DISCIPLINAS, SITUACOES, STATUS_APROVACAO } from '../config/constants';
 import { Button, C, Header, Input, Select, s } from '../components/ui';
 import { listItems } from '../db/database';
 import { approverAreas, importContractor } from '../services/items';
-import { exportMaster } from '../services/sync';
+import { exportAndShare } from '../services/sync';
 import { useApp } from '../state/AppContext';
 import type { PunchItem } from '../types';
 import { fmtDate, norm } from '../utils/format';
@@ -55,8 +54,8 @@ export default function ListScreen({ mode }: { mode: 'office' | 'approvals' }) {
   const doExport = async () => {
     setBusy('export');
     try {
-      const file = await exportMaster();
-      await Sharing.shareAsync(file, { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', UTI: 'org.openxmlformats.spreadsheetml.sheet', dialogTitle: 'Punch List' });
+      await exportAndShare();
+      await refreshPending();
     } catch (e: any) { Alert.alert('Exportar', e.message); } finally { setBusy(''); }
   };
 
@@ -103,7 +102,8 @@ export default function ListScreen({ mode }: { mode: 'office' | 'approvals' }) {
       <Modal visible={askArea} transparent animationType="fade" onRequestClose={() => setAskArea(false)}>
         <View style={s.backdrop}>
           <View style={[s.sheet, { paddingBottom: 32 }]}>
-            <Text style={{ fontWeight: '800', fontSize: 16, marginBottom: 8 }}>Área do arquivo da contratada</Text>
+            <Text style={{ fontWeight: '800', fontSize: 16, marginBottom: 8 }}>Área do arquivo</Text>
+            <Text style={{ color: C.muted, marginBottom: 8 }}>Planilhas enviadas pelo app (uma aba por Área) usam a área de cada aba.</Text>
             <Select value={uploadArea} options={AREAS} onChange={setUploadArea} />
             <Button title="Selecionar arquivo .xlsx" disabled={!uploadArea} onPress={upload} />
             <Button title="Cancelar" variant="ghost" onPress={() => setAskArea(false)} />

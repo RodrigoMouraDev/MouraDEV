@@ -4,6 +4,28 @@ App corporativo **Android + iOS** (Expo SDK 58 + EAS Build, TypeScript) para reg
 **100% offline**, com sincronização automática para o **SharePoint Online** (Lista + Biblioteca de Documentos)
 e atualização da planilha mestre **`Modelo - Punch list.xlsx`**.
 
+## Modo rápido — sem login (padrão)
+
+Sem `EXPO_PUBLIC_AZURE_CLIENT_ID` o app roda **sem conta Microsoft e sem cadastro no Entra ID**:
+
+1. Na primeira abertura a pessoa informa o **nome completo** (vai em `Solicitado por` e libera as aprovações da matriz).
+2. Escolhe o perfil e registra pendências offline (5 campos + foto).
+3. **Enviar Planilha** gera o arquivo no padrão do `Modelo - Punch list.xlsx` (embutido no app, uma aba por Área)
+   e abre o compartilhar do celular → escolher **OneDrive/SharePoint, Teams ou e-mail** e salvar em
+   `10-PUNCH LIST/BASE DE DADOS`. Havendo fotos novas, sai um **.zip** com a planilha + pasta `FOTOS`
+   (a coluna Foto aponta para o arquivo dentro da pasta).
+4. A **Timenow** (Sala/Engenharia) importa as planilhas recebidas em **Upload Arquivo**: cada aba entra na Área
+   correspondente, sem duplicar (Área + TAG + Descrição), e exporta a mestre consolidada.
+
+Gerar o APK direto:
+
+```bash
+npm install && npx eas-cli build -p android --profile preview
+```
+
+> No modo local a aprovação confia no nome digitado. Para validação por conta corporativa e sincronização
+> automática com o SharePoint, preencha o Entra ID (seções 1 e 2) — o app passa a usar o modo nuvem.
+
 ## Arquitetura
 
 ```

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Image, Linking, Modal, ScrollView, Text, View } from 'react-native';
 import { CATEGORIAS, IMPACTOS, PROFILES, SITUACOES, TIPOS } from '../config/constants';
 import { Button, C, Header, Input, Label, Select, s } from '../components/ui';
+import { CLOUD } from '../config/env';
 import { getItem } from '../db/database';
 import { approverFor, canApprove, decide, saveEdit } from '../services/items';
 import { useApp } from '../state/AppContext';
@@ -37,7 +38,7 @@ export default function DetailScreen({ localId }: { localId: string }) {
 
   const after = async (x: PunchItem, msg: string) => {
     setIt(x); setDraft({}); await refreshPending();
-    if (online) sync(true);
+    if (CLOUD && online) sync(true);
     Alert.alert('OK', msg, [{ text: 'OK', onPress: back }]);
   };
 

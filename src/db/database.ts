@@ -69,3 +69,9 @@ export async function areaEmissao(area: string, fallback: string) {
 export async function deleteItem(localId: string) {
   await (await getDb()).runAsync('DELETE FROM items WHERE localId = ?', [localId]);
 }
+
+/** Próximo Item da área (modo local). */
+export async function nextItem(area: string) {
+  const r = await (await getDb()).getFirstAsync<{ n: number | null }>('SELECT MAX(item) n FROM items WHERE area = ?', [area]);
+  return (r?.n ?? 0) + 1;
+}

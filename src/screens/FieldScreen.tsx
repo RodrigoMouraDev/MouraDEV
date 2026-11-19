@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { AREAS, DISCIPLINAS } from '../config/constants';
+import { CLOUD } from '../config/env';
 import { Button, C, Header, Input, Label, Select, s } from '../components/ui';
 import { createFieldItem } from '../services/items';
 import { useApp } from '../state/AppContext';
@@ -31,8 +32,9 @@ export default function FieldScreen() {
       await createFieldItem({ area, tag, descricao, disciplina, photoUri: photo }, user!, profile!);
       await refreshPending();
       setTag(''); setDescricao(''); setPhoto(null); // mantém Área/Disciplina para registros em sequência
-      Alert.alert('Salvo', online ? 'Registro salvo. Sincronizando…' : 'Registro salvo no aparelho. Será enviado quando houver rede.');
-      if (online) sync(true);
+      Alert.alert('Salvo', !CLOUD ? 'Registro salvo no aparelho. Use "Enviar Planilha" para mandar.'
+        : online ? 'Registro salvo. Sincronizando…' : 'Registro salvo no aparelho. Será enviado quando houver rede.');
+      if (CLOUD && online) sync(true);
     } catch (e: any) {
       Alert.alert('Erro', e.message);
     } finally { setBusy(false); }

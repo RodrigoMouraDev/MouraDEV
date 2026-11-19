@@ -1,13 +1,15 @@
 import NetInfo from '@react-native-community/netinfo';
 import * as FS from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { COLUMNS } from '../config/columns';
 import { AREAS } from '../config/constants';
-import { ENV } from '../config/env';
+import { CLOUD, ENV } from '../config/env';
 import { areaEmissao, deleteItem, findBySpId, getItem, listItems, setMeta, upsertItem } from '../db/database';
 import type { PunchItem } from '../types';
 import { nowIso, today } from '../utils/format';
 import { getCachedUser } from './auth';
 import { buildMaster } from './excel';
+import { exportLocal, markExported } from './local';
 import { createListItem, downloadFile, getAllListItems, updateListItem, uploadFile } from './graph';
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -116,6 +118,7 @@ async function publishMaster(rev: string) {
  * offline -> gera a partir da base local (última cópia do modelo).
  */
 export async function exportMaster(): Promise<string> {
+  if (!CLOUD) return exportLocal();
   const out = `${FS.cacheDirectory}${ENV.spMasterPath.split('/').pop()}`;
   if (await isOnline()) {
     await syncNow();
@@ -126,4 +129,16 @@ export async function exportMaster(): Promise<string> {
   const template = has ? await FS.readAsStringAsync(MASTER_CACHE, { encoding: FS.EncodingType.Base64 }) : null;
   await FS.writeAsStringAsync(out, buildMaster(await listItems(), template, await header(today())), { encoding: FS.EncodingType.Base64 });
   return out;
+}
+
+/** Exporta e abre o compartilhar do aparelho (OneDrive, SharePoint, Teams, e-mail…). */
+export async function exportAndShare() {
+  const file = await exportMaster();
+  const zip = file.endsWith('.zip');
+  await Sharing.shareAsync(file, {
+    mimeType: zip ? 'application/zip' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    UTI: zip ? 'public.zip-archive' : 'org.openxmlformats.spreadsheetml.sheet',
+    dialogTitle: 'Enviar Punch List',
+  });
+  if (!CLOUD) await markExported();
 }

@@ -58,10 +58,15 @@ export interface ContractorParse { rows: Partial<PunchItem>[]; errors: string[] 
 export function parseContractor(base64: string): ContractorParse {
   const wb = XLSX.read(base64, { type: 'base64' });
   let found = false;
-  for (const name of wb.SheetNames) { // primeira aba no padrão do modelo que tenha linhas preenchidas
+  const allRows: Partial<PunchItem>[] = [];
+  const allErrors: string[] = [];
+  // Abas com nome de Área (planilha exportada pelo app) trazem a área; senão usa a primeira aba preenchida.
+  for (const name of wb.SheetNames) {
     const loc = locate(wb, [name]);
     if (!loc) continue;
     found = true;
+    const sheetArea = AREAS.find((a) => sheetName(a) === name);
+    if (!sheetArea && allRows.length) continue;
     const { ws, dataRow, cols } = loc;
     const end = XLSX.utils.decode_range(ws['!ref']!).e.r;
     const rows: Partial<PunchItem>[] = [];
@@ -70,11 +75,14 @@ export function parseContractor(base64: string): ContractorParse {
       const row: Partial<PunchItem> = {};
       for (const [key, c] of cols) (row as any)[key] = fromCell(ws[XLSX.utils.encode_cell({ r, c })], COL_BY_KEY.get(key)!);
       if (!row.tag && !row.descricao) continue;
+      if (sheetArea) row.area = sheetArea;
       if (!row.tag || !row.descricao) errors.push(`Aba ${name}, linha ${r + 1}: TAG e Descrição são obrigatórios.`);
       else rows.push(row);
     }
-    if (rows.length || errors.length) return { rows, errors };
+    allRows.push(...rows); allErrors.push(...errors);
+    if (!sheetArea && (rows.length || errors.length)) break; // planilha de contratada: uma aba só
   }
+  if (allRows.length || allErrors.length) return { rows: allRows, errors: allErrors };
   return { rows: [], errors: [found ? 'Nenhuma pendência preenchida no arquivo.' : 'Colunas obrigatórias não encontradas: "TAG" e "Descrição".'] };
 }
 
@@ -218,7 +226,11 @@ function renderSheet(xml: string, L: Layout, items: PunchItem[], head: { area: s
       const ref = `${l}${r}`;
       const col = COL_BY_KEY.get(k)!;
       if (v === null || v === undefined || v === '') return cellXml(ref, st.text, null);
-      if (k === 'fotoUrl') return cellXml(ref, st.text, { t: 'f', f: `HYPERLINK("${String(v).replace(/"/g, '""')}","Foto")`, v: 'Foto' });
+      if (k === 'fotoUrl') { // URL do SharePoint -> "Foto"; caminho relativo (pacote .zip) -> o próprio caminho
+        const u = String(v).replace(/"/g, '""');
+        const label = /^https?:/i.test(String(v)) ? 'Foto' : String(v);
+        return cellXml(ref, st.text, { t: 'f', f: `HYPERLINK("${u}","${label.replace(/"/g, '""')}")`, v: label });
+      }
       if (k === 'dataAprovacao') return cellXml(ref, st.text, { t: 's', v: fmtDateTime(String(v)) });
       if (col.type === 'date') return cellXml(ref, st.date, { t: 'n', v: toSerial(String(v)) });
       if (col.type === 'number') return cellXml(ref, st.num, { t: 'n', v: Number(v) });

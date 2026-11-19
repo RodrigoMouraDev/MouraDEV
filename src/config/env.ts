@@ -1,8 +1,5 @@
 /** Variáveis públicas (EXPO_PUBLIC_*) definidas em .env — veja .env.example. */
-const req = (name: string, v: string | undefined) => {
-  if (!v) console.warn(`[env] ${name} não definido`);
-  return v ?? '';
-};
+const req = (_name: string, v: string | undefined) => v ?? '';
 
 /** Pasta do Punch List na biblioteca "01 Documentação" do site AraucoProjetoSucuriu (Timenow). */
 const PUNCH_FOLDER = 'GERENCIAMENTO DE EPC/05- Qualidade/QUALIDADE - SUCURIU/07 - GESTÃO E CONTROLE/10-PUNCH LIST';
@@ -20,4 +17,7 @@ export const ENV = {
 };
 
 /** Sites.Manage.All: permite ao app criar a Lista "PunchList" na primeira sincronização, se ainda não existir. */
+/** Sem Client ID => modo local (sem login Microsoft): exporta planilha + fotos pelo compartilhar do aparelho. */
+export const CLOUD = !!process.env.EXPO_PUBLIC_AZURE_CLIENT_ID;
+
 export const SCOPES = ['openid', 'profile', 'offline_access', 'User.Read', 'Sites.ReadWrite.All', 'Sites.Manage.All'];

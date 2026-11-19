@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
+import { CLOUD } from '../config/env';
 import { useApp } from '../state/AppContext';
 
 export const C = { primary: '#00594C', accent: '#E07A1F', danger: '#B3261E', bg: '#F4F6F5', text: '#1B1F1E', muted: '#6B7672', border: '#D5DBD9' };
@@ -71,8 +72,8 @@ export function Header({ title, canBack = true }: { title: string; canBack?: boo
       </View>
       <View style={s.syncRow}>
         <Text style={{ color: '#fff' }}>Pendentes de envio: <Text style={{ fontWeight: '800' }}>{pending}</Text></Text>
-        <Pressable onPress={() => sync()} disabled={syncing || !online} style={[s.syncBtn, (!online || syncing) && { opacity: 0.5 }]}>
-          {syncing ? <ActivityIndicator color={C.primary} size="small" /> : <Text style={{ color: C.primary, fontWeight: '700' }}>Sincronizar Agora</Text>}
+        <Pressable onPress={() => sync()} disabled={syncing || (CLOUD && !online)} style={[s.syncBtn, ((CLOUD && !online) || syncing) && { opacity: 0.5 }]}>
+          {syncing ? <ActivityIndicator color={C.primary} size="small" /> : <Text style={{ color: C.primary, fontWeight: '700' }}>{CLOUD ? 'Sincronizar Agora' : 'Enviar Planilha'}</Text>}
         </Pressable>
       </View>
     </View>

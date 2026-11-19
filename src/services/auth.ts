@@ -74,6 +74,13 @@ export async function getAccessToken(): Promise<string> {
   return n.accessToken;
 }
 
+/** Modo local: identificação só pelo nome (sem conta Microsoft). */
+export async function localLogin(name: string): Promise<UserProfile> {
+  const user: UserProfile = { id: `local-${Date.now()}`, displayName: name.trim().replace(/\s+/g, ' '), mail: '' };
+  await setSecure('user', JSON.stringify(user));
+  return user;
+}
+
 export async function logout() {
   await setSecure('tokens', null);
   await setSecure('user', null);
